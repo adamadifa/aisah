@@ -62,17 +62,45 @@ class RAGEngine {
   }
 
   /**
-   * Deteksi unit pendidikan (Cek query saat ini dulu, jika tidak ada baru cek riwayat)
+   * Deteksi unit pendidikan dari sebuah teks.
+   * Hanya mengembalikan unit jika terdeteksi secara spesifik/tidak ambigu.
    */
   detectUnit(text) {
     if (!text) return null;
     const lower = text.toLowerCase();
-    if (/\b(sdit|sd|sekolah dasar)\b/.test(lower)) return 'sdit';
-    if (/\b(tk|calisa|rabbani|paud)\b/.test(lower)) return 'tk';
-    if (/\b(asrama|boarding|mukim|syahriah|musyrif|jenguk)\b/.test(lower)) return 'asrama';
-    if (/\b(mts|tsanawiyyah)\b/.test(lower)) return 'mts';
-    if (/\b(ma|muallimin|aliyah)\b/.test(lower)) return 'ma';
-    if (/\b(mdu|diniyah|mdta)\b/.test(lower)) return 'mdu';
+    const matched = [];
+
+    if (/\b(sdit|sekolah dasar)\b/.test(lower) || /\bsd\b/.test(lower)) matched.push('sdit');
+    if (/\b(tk|calisa|rabbani|paud|taman kanak)\b/.test(lower)) matched.push('tk');
+    if (/\b(asrama|boarding|mukim|syahriah|musyrif|jenguk)\b/.test(lower)) matched.push('asrama');
+    if (/\b(mts|tsanawiyyah)\b/.test(lower)) matched.push('mts');
+    if (/\b(ma|muallimin|aliyah)\b/.test(lower)) matched.push('ma');
+    if (/\b(mdu|diniyah|mdta)\b/.test(lower)) matched.push('mdu');
+
+    // Jika tepat 1 unit yang cocok, berarti spesifik
+    if (matched.length === 1) return matched[0];
+    return null;
+  }
+
+  /**
+   * Menentukan unit aktif dari pertanyaan terkini atau menelusuri riwayat percakapan
+   * dari pesan TERBARU mundur ke pesan terlama.
+   */
+  detectActiveUnit(query, conversationHistory = []) {
+    // 1. Prioritaskan jika user menyebut unit langsung di pertanyaan sekarang
+    const queryUnit = this.detectUnit(query);
+    if (queryUnit) return queryUnit;
+
+    // 2. Jika tidak ada di pertanyaan sekarang, cari mundur dari pesan paling baru
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      const msg = conversationHistory[i];
+      if (!msg || !msg.text) continue;
+      const unit = this.detectUnit(msg.text);
+      if (unit) {
+        return unit; // Mengambil konteks unit dari topik obrolan terakhir!
+      }
+    }
+
     return null;
   }
 
@@ -82,13 +110,13 @@ class RAGEngine {
   search(query, conversationHistory = [], topK = 9) {
     if (!this.chunks.length) return [];
 
+    // Deteksi unit aktif dari query atau riwayat (terbaru ke terlama)
+    const activeUnit = this.detectActiveUnit(query, conversationHistory);
+
     const historyText = conversationHistory
       .slice(-4)
       .map(m => m.text)
       .join(' ');
-
-    // Prioritaskan deteksi unit dari pertanyaan terkini!
-    const activeUnit = this.detectUnit(query) || this.detectUnit(historyText);
 
     const queryTokens = this.tokenize(query);
     const combinedTokens = this.tokenize(`${query} ${historyText}`);
