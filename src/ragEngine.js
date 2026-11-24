@@ -192,7 +192,7 @@ class RAGEngine {
   /**
    * Format context dokumen menjadi string untuk prompt LLM
    */
-  buildContextString(query, conversationHistory = [], topK = 9) {
+  buildContextString(query, conversationHistory = [], topK = 3) {
     const relevantChunks = this.search(query, conversationHistory, topK);
     if (!relevantChunks.length) return 'Tidak ada data spesifik yang ditemukan.';
 

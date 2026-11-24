@@ -24,8 +24,8 @@ class AIService {
 
     if (config.groq.apiKey) {
       try {
-        this.groqClient = new Groq({ apiKey: config.groq.apiKey });
-        console.log('[AI] Groq API Client siap.');
+        this.groqClient = new Groq({ apiKey: config.groq.apiKey, maxRetries: 0 });
+        console.log('[AI] Groq API Client siap (maxRetries: 0 untuk respons cepat tanpa sleep).');
       } catch (err) {
         console.error('[AI] Gagal inisialisasi Groq Client:', err.message);
       }
@@ -135,8 +135,28 @@ ${context}
       };
     }
 
-    // 1. Ambil konteks dokumen yang cocok dari RAGEngine (mengikutsertakan history agar tidak hilang konteks)
-    const context = ragEngine.buildContextString(userMessage, history);
+    // Cek jika pengguna hanya mengucapkan terima kasih, pamit, atau selesai
+    const isClosingOnly = /^(terima\s*kasih|makasih|syukron|jazakallah|nanti\s*lagi|cukup|sudah\s*cukup|close|bye|selesai)$/i.test(cleanLower) ||
+                          /^(kayanya|kayaknya)\s+(cukup|nanti)/i.test(cleanLower) ||
+                          /^(oke\s+makasih|ok\s+makasih|sip\s+makasih|siap\s+makasih)/i.test(cleanLower);
+
+    if (isClosingOnly) {
+      const closingReply = "Sama-sama, Ayah/Bunda. Semoga informasi yang Aisah sampaikan bermanfaat. Jika sewaktu-waktu membutuhkan bantuan seputar SPMB Pesantren Persis 80 Al-Amin, jangan sungkan untuk menghubungi Aisah kembali ya. 😊";
+      this.addMessageToHistory(sessionId, 'user', userMessage);
+      this.addMessageToHistory(sessionId, 'assistant', closingReply);
+      return {
+        reply: closingReply,
+        provider: 'System Template (Penutup)',
+        contextRetrieved: 'Pesan Penutup'
+      };
+    }
+
+    // Cek jika pesan hanya penutup singkat atau ucapan terima kasih
+    const isClosing = /^(terima\s*kasih|makasih|syukron|jazakallah|nanti\s*lagi|cukup|sudah\s*cukup|close|bye|selesai|sip|oke|ok|siap)$/i.test(cleanLower) ||
+                      /^(kayanya|kayaknya)\s+(cukup|nanti)/i.test(cleanLower);
+
+    // 1. Ambil konteks dokumen yang cocok dari RAGEngine (hemat token untuk pesan penutup)
+    const context = isClosing ? '' : ragEngine.buildContextString(userMessage, history);
     const systemPrompt = this.buildSystemPrompt(context, isFirstMessage);
 
     let providerUsed = '';
@@ -270,7 +290,7 @@ ${context}
       messages,
       model: config.groq.model,
       temperature: 0.25,
-      max_tokens: 1500, // 1500 tokens agar tuntas
+      max_tokens: 800, // 800 tokens — cukup tuntas untuk chat CS
     });
 
     return chatCompletion.choices[0]?.message?.content || '';
