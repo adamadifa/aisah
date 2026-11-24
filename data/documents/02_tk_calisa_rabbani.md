@@ -163,6 +163,8 @@ Kegiatan belajar mengajar berlangsung pada pukul **06.50 s/d 13.50 WIB** dengan 
 
 ## 12. Kebijakan Rincian Biaya TK Calisa Rabbani
 - **Total Investasi Pendidikan Awal Masuk**: **Rp4.750.000**
+- **Infografis Brosur Rincian Biaya Resmi TK**:
+  https://siprenpas.my.id/storage/ppdb/rincian_biaya_fullday_U01_1795487065.jpg
 - **Rincian Komponen Biaya**:
   • Biaya Pendaftaran: **Rp300.000**
   • Seragam (5 stel pakaian sekolah): **Rp650.000**

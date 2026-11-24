@@ -237,8 +237,22 @@ class WhatsAppBot {
       console.log(`[Pesan Keluar] Dibalas via ${provider}:`);
       console.log(reply.substring(0, 150) + (reply.length > 150 ? '...' : ''));
 
-      // 7. Kirim balasan ke WhatsApp
-      await this.sock.sendMessage(from, { text: reply }, { quoted: msg });
+      // 7. Kirim balasan ke WhatsApp (Kirim sebagai media gambar jika ada link gambar)
+      const imgMatch = reply.match(/(https?:\/\/[^\s<]+\.(?:jpg|jpeg|png|webp))/i);
+      if (imgMatch) {
+        const imageUrl = imgMatch[0];
+        const caption = reply.replace(imageUrl, '').trim();
+        await this.sock.sendMessage(
+          from,
+          {
+            image: { url: imageUrl },
+            caption: caption || undefined,
+          },
+          { quoted: msg }
+        );
+      } else {
+        await this.sock.sendMessage(from, { text: reply }, { quoted: msg });
+      }
 
       // Hentikan status mengetik
       await this.sock.sendPresenceUpdate('paused', from);
